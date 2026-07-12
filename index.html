@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PrismOps — مخزن الأدوات</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+
+  :root {
+    --bg:       #0F1214;
+    --surface:  #181C21;
+    --card:     #1F252D;
+    --border:   #2A3140;
+    --steel:    #5B9EC9;
+    --amber:    #E8832A;
+    --success:  #3DAA6F;
+    --danger:   #D95F5F;
+    --warn:     #C9A83A;
+    --text:     #DDE3EC;
+    --muted:    #7A8A9A;
+    --radius:   12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cairo', system-ui, sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    padding-bottom: 50px;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--amber);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-mark {
+    width: 38px; height: 38px;
+    background: var(--amber);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px; color: #fff; flex-shrink: 0;
+  }
+  header h1 { font-size: 17px; font-weight: 900; }
+  header p  { font-size: 11px; color: var(--muted); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab-btn {
+    flex: 1; min-width: 80px;
+    background: none; border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--muted);
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 13px 6px; cursor: pointer; transition: .2s;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+  /* PANELS */
+  .panel { display: none; padding: 18px 15px; }
+  .panel.active { display: block; }
+
+  /* CARDS */
+  .section-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px; margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 12px; font-weight: 700;
+    color: var(--amber); text-transform: uppercase;
+    letter-spacing: .08em; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::before {
+    content: ''; display: inline-block;
+    width: 4px; height: 14px;
+    background: var(--amber); border-radius: 2px;
+  }
+
+  /* FIELDS */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+  input, select, textarea {
+    width: 100%;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Cairo', sans-serif; font-size: 15px;
+    padding: 11px 13px; outline: none; transition: border-color .2s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--amber); }
+  select option { background: var(--card); }
+
+  /* RADIO */
+  .radio-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 7px;
+  }
+  .radio-group label {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 6px; text-align: center;
+    cursor: pointer; font-size: 13px; color: var(--text);
+    transition: .15s; margin: 0; user-select: none;
+  }
+  .radio-group input[type=radio] { display: none; }
+  .radio-group input[type=radio]:checked + label {
+    background: rgba(232,131,42,.15);
+    border-color: var(--amber); color: var(--amber); font-weight: 700;
+  }
+
+  /* BUTTONS */
+  .btn-primary {
+    width: 100%; background: var(--amber); border: none;
+    border-radius: var(--radius); color: #fff;
+    font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700;
+    padding: 14px; cursor: pointer; margin-top: 6px;
+    transition: background .2s, transform .1s;
+  }
+  .btn-primary:active { transform: scale(.98); }
+  .btn-primary:hover  { background: #d07520; }
+
+  .btn-secondary {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 600;
+    padding: 9px 16px; cursor: pointer; transition: border-color .2s;
+  }
+  .btn-secondary:hover { border-color: var(--amber); }
+
+  .btn-sm {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--muted);
+    font-family: 'Cairo', sans-serif; font-size: 12px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  .btn-sm.danger { border-color: var(--danger); color: var(--danger); }
+  .btn-sm.success { border-color: var(--success); color: var(--success); }
+  .btn-sm.warn { border-color: var(--warn); color: var(--warn); }
+
+  /* STATS */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-bottom: 18px;
+  }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 8px; text-align: center;
+  }
+  .stat-num { font-size: 22px; font-weight: 900; color: var(--amber); line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  /* TOOL CARD */
+  .tool-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 13px 15px; margin-bottom: 10px;
+    transition: border-color .2s;
+  }
+  .tool-card.low-stock { border-color: rgba(217,95,95,.5); }
+  .tool-card.out-stock { border-color: var(--danger); background: rgba(217,95,95,.05); }
+
+  .tool-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; margin-bottom: 8px;
+  }
+  .tool-name { font-size: 15px; font-weight: 700; }
+  .tool-id   { font-size: 11px; color: var(--muted); }
+
+  .badge {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 9px; border-radius: 100px; white-space: nowrap;
+  }
+  .badge-ok      { background: rgba(61,170,111,.15); color: var(--success); }
+  .badge-low     { background: rgba(201,168,58,.15); color: var(--warn); }
+  .badge-out     { background: rgba(217,95,95,.15);  color: var(--danger); }
+  .badge-lent    { background: rgba(91,158,201,.15); color: var(--steel); }
+
+  .tool-meta {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+  }
+  .meta-chip {
+    background: var(--surface); border-radius: 6px;
+    font-size: 12px; color: var(--muted); padding: 3px 9px;
+  }
+  .meta-chip span { color: var(--text); font-weight: 600; }
+
+  .qty-bar-wrap {
+    background: var(--surface); border-radius: 4px;
+    height: 6px; margin-bottom: 10px; overflow: hidden;
+  }
+  .qty-bar {
+    height: 100%; border-radius: 4px; transition: width .4s;
+  }
+
+  .tool-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+
+  /* SEARCH */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-wrap input { padding-right: 38px; }
+  .search-icon {
+    position: absolute; left: auto; right: 12px; top: 50%;
+    transform: translateY(-50%); color: var(--muted); font-size: 16px;
+    pointer-events: none;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.75); z-index: 200;
+    align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 22px 18px 36px; width: 100%; max-width: 480px;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-title {
+    font-size: 16px; font-weight: 800;
+    color: var(--amber); margin-bottom: 16px;
+  }
+
+  /* HISTORY */
+  .log-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+  }
+  .log-text { font-size: 13px; line-height: 1.6; flex: 1; }
+  .log-time { font-size: 11px; color: var(--muted); }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--success); color: #fff;
+    font-family: 'Cairo', sans-serif; font-weight: 700;
+    font-size: 14px; padding: 11px 22px;
+    border-radius: 100px;
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    z-index: 999; white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  .empty-state {
+    text-align: center; padding: 44px 20px; color: var(--muted);
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+  .toolbar {
+    display: flex; gap: 8px; margin-bottom: 14px; align-items: center;
+  }
+  .toolbar-title { font-weight: 700; font-size: 14px; flex: 1; }
+
+  .filter-row {
+    display: flex; gap: 7px; margin-bottom: 14px; overflow-x: auto;
+  }
+  .filter-btn {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 100px; color: var(--muted);
+    font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 6px 14px; cursor: pointer; white-space: nowrap; transition: .15s;
+  }
+  .filter-btn.active { background: rgba(232,131,42,.15); border-color: var(--amber); color: var(--amber); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* low stock alert banner */
+  .alert-banner {
+    background: rgba(217,95,95,.1); border: 1px solid rgba(217,95,95,.4);
+    border-radius: var(--radius); padding: 12px 15px; margin-bottom: 14px;
+    font-size: 13px; color: var(--danger); display: none;
+  }
+  .alert-banner.show { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">🔧</div>
+  <div>
+    <h1>PrismOps — المخزن</h1>
+    <p>إدارة أدوات المصنع</p>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('inventory')">📦 المخزن</button>
+  <button class="tab-btn" onclick="switchTab('add')">➕ إضافة</button>
+  <button class="tab-btn" onclick="switchTab('lend')">🔄 استعارة</button>
+  <button class="tab-btn" onclick="switchTab('log')">📋 السجل</button>
+  <button class="tab-btn" onclick="switchTab('export')">📤 تصدير</button>
+</div>
+
+<!-- ══════════════════════════════════
+     TAB 1 — INVENTORY
+══════════════════════════════════ -->
+<div class="panel active" id="panel-inventory">
+  <div class="stats-row" id="inv-stats"></div>
+  <div class="alert-banner" id="low-alert">⚠️ في أدوات وصلت للحد الأدنى — اتحقق منها</div>
+
+  <div class="search-wrap">
+    <input type="text" id="search-input" placeholder="ابحث عن أداة..." oninput="renderInventory()">
+    <span class="search-icon">🔍</span>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all', this)">الكل</button>
+    <button class="filter-btn" onclick="setFilter('متاح', this)">✅ متاح</button>
+    <button class="filter-btn" onclick="setFilter('قليل', this)">⚠️ قليل</button>
+    <button class="filter-btn" onclick="setFilter('نفد', this)">❌ نفد</button>
+    <button class="filter-btn" onclick="setFilter('معار', this)">🔄 معار</button>
+  </div>
+
+  <div id="inventory-list"></div>
+</div>
+
+<!-- ══════════════════════════════════
+     TAB 2 — ADD TOOL
+══════════════════════════════════ -->
+<div class="panel" id="panel-add">
+  <div class="section-card">
+    <div class="section-title">بيانات الأداة</div>
+
+    <div class="field">
+      <label>اسم الأداة</label>
+      <input type="text" id="tool_name" placeholder="مثال: مفتاح ربط ١٩">
+    </div>
+
+    <div class="field">
+      <label>الفئة</label>
+      <div class="radio-group">
+        <input type="radio" name="category" id="c1" value="مفاتيح"><label for="c1">🔑 مفاتيح</label>
+        <input type="radio" name="category" id="c2" value="قياس"><label for="c2">📏 قياس</label>
+        <input type="radio" name="category" id="c3" value="لحام"><label for="c3">🔥 لحام</label>
+        <input type="radio" name="category" id="c4" value="قطع"><label for="c4">⚙️ قطع</label>
+        <input type="radio" name="category" id="c5" value="كهرباء"><label for="c5">⚡ كهرباء</label>
+        <input type="radio" name="category" id="c6" value="حماية"><label for="c6">🦺 حماية</label>
+        <input type="radio" name="category" id="c7" value="تاني"><label for="c7">📦 تاني</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>الوحدة</label>
+      <div class="radio-group">
+        <input type="radio" name="unit" id="u1" value="قطعة"><label for="u1">قطعة</label>
+        <input type="radio" name="unit" id="u2" value="طقم"><label for="u2">طقم</label>
+        <input type="radio" name="unit" id="u3" value="متر"><label for="u3">متر</label>
+        <input type="radio" name="unit" id="u4" value="كيلو"><label for="u4">كيلو</label>
+        <input type="radio" name="unit" id="u5" value="علبة"><label for="u5">علبة</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">الكميات</div>
+
+    <div class="field">
+      <label>الكمية الحالية</label>
+      <input type="number" id="qty_current" placeholder="مثال: 5" min="0">
+    </div>
+
+    <div class="field">
+      <label>الحد الأدنى (تنبيه لما تقل عنه)</label>
+      <input type="number" id="qty_min" placeholder="مثال: 2" min="0">
+    </div>
+
+    <div class="field">
+      <label>موقع التخزين (اختياري)</label>
+      <input type="text" id="location" placeholder="مثال: رف A - درج 3">
+    </div>
+
+    <div class="field">
+      <label>ملاحظات (اختياري)</label>
+      <input type="text" id="tool_notes" placeholder="مثال: للحام فقط">
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="addTool()">💾 إضافة الأداة للمخزن</button>
+</div>
+
+<!-- ══════════════════════════════════
+     TAB 3 — LEND / RETURN
+══════════════════════════════════ -->
+<div class="panel" id="panel-lend">
+  <div class="section-card">
+    <div class="section-title">إخراج أداة (استعارة)</div>
+
+    <div class="field">
+      <label>اختار الأداة</label>
+      <select id="lend_tool_id">
+        <option value="">— اختار —</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>اسم العامل</label>
+      <input type="text" id="lend_worker" placeholder="مثال: محمود الحداد">
+    </div>
+
+    <div class="field">
+      <label>الكمية</label>
+      <input type="number" id="lend_qty" value="1" min="1">
+    </div>
+
+    <div class="field">
+      <label>السبب / الاستخدام (اختياري)</label>
+      <input type="text" id="lend_reason" placeholder="مثال: لحام بوابة العميل">
+    </div>
+
+    <button class="btn-primary" onclick="lendTool()">📤 إخراج</button>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">إرجاع أداة</div>
+
+    <div class="field">
+      <label>اختار الأداة</label>
+      <select id="return_tool_id">
+        <option value="">— اختار —</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>اسم العامل</label>
+      <input type="text" id="return_worker" placeholder="مثال: محمود الحداد">
+    </div>
+
+    <div class="field">
+      <label>الكمية</label>
+      <input type="number" id="return_qty" value="1" min="1">
+    </div>
+
+    <div class="field">
+      <label>حالة الأداة بعد الإرجاع</label>
+      <div class="radio-group">
+        <input type="radio" name="return_cond" id="rc1" value="كويسة"><label for="rc1">✅ كويسة</label>
+        <input type="radio" name="return_cond" id="rc2" value="تالفة"><label for="rc2">⚠️ تالفة</label>
+        <input type="radio" name="return_cond" id="rc3" value="مكسورة"><label for="rc3">❌ مكسورة</label>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="returnTool()" style="background:var(--success)">📥 إرجاع</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     TAB 4 — LOG
+══════════════════════════════════ -->
+<div class="panel" id="panel-log">
+  <div class="toolbar">
+    <span class="toolbar-title">سجل الحركات</span>
+    <button class="btn-secondary" onclick="renderLog()">🔄</button>
+  </div>
+  <div id="log-list"></div>
+</div>
+
+<!-- ══════════════════════════════════
+     TAB 5 — EXPORT
+══════════════════════════════════ -->
+<div class="panel" id="panel-export">
+  <div class="section-card">
+    <div class="section-title">تصدير المخزن</div>
+    <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:16px">
+      صدّر كل الأدوات وحالتها كملف CSV.
+    </p>
+    <button class="btn-primary" onclick="exportInventoryCSV()">⬇️ تحميل CSV — المخزن</button>
+  </div>
+  <div class="section-card" style="margin-top:14px">
+    <div class="section-title">تصدير السجل</div>
+    <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:16px">
+      صدّر كل حركات الإخراج والإرجاع.
+    </p>
+    <button class="btn-primary" onclick="exportLogCSV()" style="background:var(--steel)">⬇️ تحميل CSV — السجل</button>
+  </div>
+  <div class="section-card" style="margin-top:14px">
+    <div class="section-title" style="color:var(--danger)">خطر</div>
+    <button class="btn-sm danger" onclick="clearAll()">🗑️ مسح كل البيانات</button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ تعديل الأداة</div>
+    <input type="hidden" id="edit_id">
+    <div class="field"><label>اسم الأداة</label><input type="text" id="edit_name"></div>
+    <div class="field"><label>الكمية الحالية</label><input type="number" id="edit_qty" min="0"></div>
+    <div class="field"><label>الحد الأدنى</label><input type="number" id="edit_min" min="0"></div>
+    <div class="field"><label>موقع التخزين</label><input type="text" id="edit_loc"></div>
+    <div class="field"><label>ملاحظات</label><input type="text" id="edit_note"></div>
+    <button class="btn-primary" onclick="saveEdit()">💾 حفظ التعديل</button>
+    <button class="btn-secondary" onclick="closeEditModal()" style="width:100%;margin-top:10px;text-align:center">إلغاء</button>
+  </div>
+</div>
+
+<div id="toast">تم ✓</div>
+
+<script>
+const TOOLS_KEY = 'prismops_tools';
+const LOG_KEY   = 'prismops_tool_log';
+let currentFilter = 'all';
+
+// ── Storage ─────────────────────────────────
+function getTools() { try { return JSON.parse(localStorage.getItem(TOOLS_KEY)) || []; } catch { return []; } }
+function saveTools(arr) { localStorage.setItem(TOOLS_KEY, JSON.stringify(arr)); }
+function getLog()   { try { return JSON.parse(localStorage.getItem(LOG_KEY))   || []; } catch { return []; } }
+function saveLog(arr)   { localStorage.setItem(LOG_KEY,   JSON.stringify(arr)); }
+function genId() { return 'T-' + Date.now().toString(36).toUpperCase(); }
+
+// ── Tabs ─────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  const idx = ['inventory','add','lend','log','export'].indexOf(name);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if (name === 'inventory') renderInventory();
+  if (name === 'lend')      populateLendSelects();
+  if (name === 'log')       renderLog();
+}
+
+// ── Filter ───────────────────────────────────
+function setFilter(val, btn) {
+  currentFilter = val;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderInventory();
+}
+
+// ── Status helpers ───────────────────────────
+function getStatus(t) {
+  if (t.qty_current <= 0)        return 'نفد';
+  if (t.qty_current <= t.qty_min) return 'قليل';
+  if ((t.lent_qty || 0) > 0)     return 'معار';
+  return 'متاح';
+}
+function statusBadge(s) {
+  const map = { 'متاح':'badge-ok','قليل':'badge-low','نفد':'badge-out','معار':'badge-lent' };
+  return `<span class="badge ${map[s]||'badge-ok'}">${s}</span>`;
+}
+function barColor(s) {
+  return s==='نفد'?'var(--danger)':s==='قليل'?'var(--warn)':s==='معار'?'var(--steel)':'var(--success)';
+}
+
+// ── Render Inventory ─────────────────────────
+function renderInventory() {
+  let tools = getTools();
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  if (q) tools = tools.filter(t => t.name.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q));
+  if (currentFilter !== 'all') tools = tools.filter(t => getStatus(t) === currentFilter);
+
+  const all = getTools();
+  const total  = all.length;
+  const avail  = all.filter(t => getStatus(t) === 'متاح').length;
+  const low    = all.filter(t => getStatus(t) === 'قليل').length;
+  const lent   = all.filter(t => getStatus(t) === 'معار').length;
+
+  document.getElementById('inv-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">إجمالي</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--success)">${avail}</div><div class="stat-label">متاح</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${low}</div><div class="stat-label">قليل</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--steel)">${lent}</div><div class="stat-label">معار</div></div>
+  `;
+
+  const alertBanner = document.getElementById('low-alert');
+  alertBanner.classList.toggle('show', low > 0 || all.filter(t=>getStatus(t)==='نفد').length > 0);
+
+  const list = document.getElementById('inventory-list');
+  if (!tools.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><p>${q||currentFilter!=='all'?'مفيش نتايج':'المخزن فاضي — ابدأ بإضافة أدوات'}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = tools.map(t => {
+    const st  = getStatus(t);
+    const max = Math.max(t.qty_current + (t.lent_qty||0), t.qty_min || 1, 1);
+    const pct = Math.round((t.qty_current / max) * 100);
+    return `
+      <div class="tool-card ${st==='قليل'?'low-stock':st==='نفد'?'out-stock':''}">
+        <div class="tool-header">
+          <div>
+            <div class="tool-id">${t.id} · ${t.category||'عام'}</div>
+            <div class="tool-name">${t.name}</div>
+          </div>
+          ${statusBadge(st)}
+        </div>
+        <div class="tool-meta">
+          <div class="meta-chip">📦 <span>${t.qty_current} ${t.unit||'قطعة'}</span></div>
+          ${t.qty_min ? `<div class="meta-chip">⚠️ حد أدنى <span>${t.qty_min}</span></div>` : ''}
+          ${t.lent_qty ? `<div class="meta-chip">🔄 معار <span>${t.lent_qty}</span></div>` : ''}
+          ${t.location ? `<div class="meta-chip">📍 <span>${t.location}</span></div>` : ''}
+        </div>
+        <div class="qty-bar-wrap">
+          <div class="qty-bar" style="width:${pct}%;background:${barColor(st)}"></div>
+        </div>
+        <div class="tool-actions">
+          <button class="btn-sm success" onclick="quickAdd('${t.id}')">+ إضافة</button>
+          <button class="btn-sm warn"    onclick="openEditModal('${t.id}')">✏️ تعديل</button>
+          <button class="btn-sm danger"  onclick="deleteTool('${t.id}')">🗑️ حذف</button>
+        </div>
+        ${t.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:8px">📝 ${t.notes}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Add Tool ─────────────────────────────────
+function addTool() {
+  const v = id => document.getElementById(id).value.trim();
+  const radio = name => { const el = document.querySelector(`[name=${name}]:checked`); return el ? el.value : ''; };
+
+  if (!v('tool_name'))    return alert('اكتب اسم الأداة');
+  if (!radio('category')) return alert('اختار الفئة');
+  if (!radio('unit'))     return alert('اختار الوحدة');
+  if (v('qty_current') === '') return alert('اكتب الكمية');
+
+  const tool = {
+    id:           genId(),
+    name:         v('tool_name'),
+    category:     radio('category'),
+    unit:         radio('unit'),
+    qty_current:  parseInt(v('qty_current')) || 0,
+    qty_min:      parseInt(v('qty_min'))     || 0,
+    lent_qty:     0,
+    location:     v('location'),
+    notes:        v('tool_notes'),
+    added_at:     new Date().toISOString()
+  };
+
+  const tools = getTools();
+  tools.unshift(tool);
+  saveTools(tools);
+  addLog('إضافة', tool.id, tool.name, tool.qty_current, null, null, null);
+  showToast('تمت الإضافة ✓');
+
+  // reset
+  document.querySelectorAll('[name=category],[name=unit]').forEach(r => r.checked = false);
+  ['tool_name','qty_current','qty_min','location','tool_notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── Quick add qty ────────────────────────────
+function quickAdd(id) {
+  const q = prompt('كام تضيف من الكمية؟', '1');
+  const n = parseInt(q);
+  if (!n || n <= 0) return;
+  const tools = getTools();
+  const t = tools.find(x => x.id === id);
+  if (!t) return;
+  t.qty_current += n;
+  saveTools(tools);
+  addLog('إضافة كمية', id, t.name, n, null, null, null);
+  renderInventory();
+  showToast(`تمت إضافة ${n} ${t.unit} ✓`);
+}
+
+// ── Lend ─────────────────────────────────────
+function populateLendSelects() {
+  const tools = getTools();
+  const avail = tools.filter(t => t.qty_current > 0);
+  const all   = tools.filter(t => (t.lent_qty||0) > 0);
+
+  const lSel = document.getElementById('lend_tool_id');
+  const rSel = document.getElementById('return_tool_id');
+
+  lSel.innerHTML = '<option value="">— اختار —</option>' +
+    avail.map(t => `<option value="${t.id}">${t.name} (متاح: ${t.qty_current} ${t.unit})</option>`).join('');
+  rSel.innerHTML = '<option value="">— اختار —</option>' +
+    all.map(t => `<option value="${t.id}">${t.name} (معار: ${t.lent_qty} ${t.unit})</option>`).join('');
+}
+
+function lendTool() {
+  const toolId = document.getElementById('lend_tool_id').value;
+  const worker = document.getElementById('lend_worker').value.trim();
+  const qty    = parseInt(document.getElementById('lend_qty').value) || 0;
+  const reason = document.getElementById('lend_reason').value.trim();
+
+  if (!toolId) return alert('اختار الأداة');
+  if (!worker) return alert('اكتب اسم العامل');
+  if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
+
+  const tools = getTools();
+  const t = tools.find(x => x.id === toolId);
+  if (!t) return;
+  if (qty > t.qty_current) return alert(`في المخزن بس ${t.qty_current} ${t.unit}`);
+
+  t.qty_current -= qty;
+  t.lent_qty = (t.lent_qty || 0) + qty;
+  saveTools(tools);
+  addLog('إخراج', toolId, t.name, qty, worker, reason, null);
+  populateLendSelects();
+  showToast(`تم إخراج ${qty} ${t.unit} لـ ${worker}`);
+
+  document.getElementById('lend_worker').value = '';
+  document.getElementById('lend_reason').value = '';
+  document.getElementById('lend_qty').value = '1';
+}
+
+function returnTool() {
+  const toolId = document.getElementById('return_tool_id').value;
+  const worker = document.getElementById('return_worker').value.trim();
+  const qty    = parseInt(document.getElementById('return_qty').value) || 0;
+  const condEl = document.querySelector('[name=return_cond]:checked');
+
+  if (!toolId)  return alert('اختار الأداة');
+  if (!worker)  return alert('اكتب اسم العامل');
+  if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
+  if (!condEl)  return alert('اختار حالة الأداة');
+
+  const tools = getTools();
+  const t = tools.find(x => x.id === toolId);
+  if (!t) return;
+
+  const cond = condEl.value;
+  if (cond !== 'مكسورة') t.qty_current += qty;
+  t.lent_qty = Math.max(0, (t.lent_qty || 0) - qty);
+  saveTools(tools);
+  addLog('إرجاع', toolId, t.name, qty, worker, null, cond);
+  populateLendSelects();
+
+  const msg = cond === 'مكسورة' ? `⚠️ ${t.name} رجعت مكسورة — تم تسجيل الخسارة` : `تم استرجاع ${qty} ${t.unit} ✓`;
+  showToast(msg);
+
+  document.getElementById('return_worker').value = '';
+  document.getElementById('return_qty').value = '1';
+  document.querySelectorAll('[name=return_cond]').forEach(r => r.checked = false);
+}
+
+// ── Log ──────────────────────────────────────
+function addLog(action, toolId, toolName, qty, worker, reason, condition) {
+  const log = getLog();
+  log.unshift({
+    timestamp: new Date().toISOString(),
+    action, toolId, toolName, qty,
+    worker: worker || null,
+    reason: reason || null,
+    condition: condition || null
+  });
+  saveLog(log);
+}
+
+function renderLog() {
+  const log = getLog();
+  const list = document.getElementById('log-list');
+  if (!log.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>السجل فاضي لسه</p></div>`;
+    return;
+  }
+  const colorMap = { 'إخراج':'var(--amber)', 'إرجاع':'var(--success)', 'إضافة':'var(--steel)', 'إضافة كمية':'var(--steel)' };
+  list.innerHTML = log.map(l => {
+    const dt  = new Date(l.timestamp);
+    const dateStr = `${dt.toLocaleDateString('ar-EG')} ${dt.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}`;
+    let detail = `${l.qty} ← ${l.toolName}`;
+    if (l.worker)    detail += ` · ${l.worker}`;
+    if (l.reason)    detail += ` · ${l.reason}`;
+    if (l.condition) detail += ` · حالة: ${l.condition}`;
+    return `
+      <div class="log-item">
+        <div class="log-dot" style="background:${colorMap[l.action]||'var(--muted)'}"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:${colorMap[l.action]||'var(--muted)'}">${l.action}</div>
+          <div class="log-text">${detail}</div>
+          <div class="log-time">${dateStr}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Edit Modal ───────────────────────────────
+function openEditModal(id) {
+  const t = getTools().find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('edit_id').value   = id;
+  document.getElementById('edit_name').value = t.name;
+  document.getElementById('edit_qty').value  = t.qty_current;
+  document.getElementById('edit_min').value  = t.qty_min || '';
+  document.getElementById('edit_loc').value  = t.location || '';
+  document.getElementById('edit_note').value = t.notes || '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
+function saveEdit() {
+  const id = document.getElementById('edit_id').value;
+  const tools = getTools();
+  const t = tools.find(x => x.id === id);
+  if (!t) return;
+  t.name        = document.getElementById('edit_name').value.trim() || t.name;
+  t.qty_current = parseInt(document.getElementById('edit_qty').value) || 0;
+  t.qty_min     = parseInt(document.getElementById('edit_min').value) || 0;
+  t.location    = document.getElementById('edit_loc').value.trim();
+  t.notes       = document.getElementById('edit_note').value.trim();
+  saveTools(tools);
+  closeEditModal();
+  renderInventory();
+  showToast('تم التعديل ✓');
+}
+
+// ── Delete ───────────────────────────────────
+function deleteTool(id) {
+  if (!confirm('تحذف الأداة دي نهائياً؟')) return;
+  saveTools(getTools().filter(t => t.id !== id));
+  renderInventory();
+}
+
+// ── Export ───────────────────────────────────
+function exportInventoryCSV() {
+  const tools = getTools();
+  if (!tools.length) return alert('المخزن فاضي');
+  const cols = ['id','name','category','unit','qty_current','qty_min','lent_qty','location','notes','added_at'];
+  const rows = [cols.join(','), ...tools.map(t => cols.map(c => {
+    const v = t[c] ?? ''; return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
+  }).join(','))];
+  download('\uFEFF' + rows.join('\n'), `prismops_inventory_${today()}.csv`);
+  showToast('تم التحميل ✓');
+}
+function exportLogCSV() {
+  const log = getLog();
+  if (!log.length) return alert('السجل فاضي');
+  const cols = ['timestamp','action','toolId','toolName','qty','worker','reason','condition'];
+  const rows = [cols.join(','), ...log.map(l => cols.map(c => {
+    const v = l[c] ?? ''; return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
+  }).join(','))];
+  download('\uFEFF' + rows.join('\n'), `prismops_log_${today()}.csv`);
+  showToast('تم التحميل ✓');
+}
+function download(content, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type:'text/csv;charset=utf-8'}));
+  a.download = filename; a.click();
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function clearAll() {
+  if (!confirm('مسح كل بيانات المخزن والسجل؟ مش هيرجع!')) return;
+  localStorage.removeItem(TOOLS_KEY);
+  localStorage.removeItem(LOG_KEY);
+  showToast('تم المسح');
+  renderInventory();
+}
+
+// ── Toast ─────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Init
+renderInventory();
+</script>
+</body>
+</html>
