@@ -517,16 +517,52 @@
 
 <div id="toast">تم ✓</div>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
 <script>
-const TOOLS_KEY = 'prismops_tools';
-const LOG_KEY   = 'prismops_tool_log';
+// ── Firebase Config ─────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCkj-hGssEeI9-oVBoKjRdTGeUThUEcI",
+  authDomain: "prism-factory.firebaseapp.com",
+  projectId: "prism-factory",
+  storageBucket: "prism-factory.firebasestorage.app",
+  messagingSenderId: "236073341904",
+  appId: "1:236073341904:web:3abf50039f21ae08e3dfd5",
+  measurementId: "G-WF3S1TPQEG"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// مصفوفات محلية مؤقتة عشان الـ Render يشتغل بسرعة
+let localToolsArray = [];
+let localLogArray = [];
 let currentFilter = 'all';
 
-// ── Storage ─────────────────────────────────
-function getTools() { try { return JSON.parse(localStorage.getItem(TOOLS_KEY)) || []; } catch { return []; } }
-function saveTools(arr) { localStorage.setItem(TOOLS_KEY, JSON.stringify(arr)); }
-function getLog()   { try { return JSON.parse(localStorage.getItem(LOG_KEY))   || []; } catch { return []; } }
-function saveLog(arr)   { localStorage.setItem(LOG_KEY,   JSON.stringify(arr)); }
+// ── Realtime Synchronization (الربط اللحظي) ──
+// 1. مراقبة الأدوات
+db.collection("prismops_tools").onSnapshot((snapshot) => {
+  localToolsArray = [];
+  snapshot.forEach((doc) => {
+    localToolsArray.push({ docId: doc.id, ...doc.data() });
+  });
+  renderInventory();
+  populateLendSelects();
+});
+
+// 2. مراقبة السجل
+db.collection("prismops_tool_log").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+  localLogArray = [];
+  snapshot.forEach((doc) => {
+    localLogArray.push(doc.data());
+  });
+  renderLog();
+});
+
+// ── Storage Alternatives ─────────────────────
+function getTools() { return localToolsArray; }
+function getLog()   { return localLogArray; }
 function genId() { return 'T-' + Date.now().toString(36).toUpperCase(); }
 
 // ── Tabs ─────────────────────────────────────
@@ -535,7 +571,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
   const idx = ['inventory','add','lend','log','export'].indexOf(name);
-  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if (idx !== -1) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (name === 'inventory') renderInventory();
   if (name === 'lend')      populateLendSelects();
   if (name === 'log')       renderLog();
@@ -551,7 +587,7 @@ function setFilter(val, btn) {
 
 // ── Status helpers ───────────────────────────
 function getStatus(t) {
-  if (t.qty_current <= 0)        return 'نفد';
+  if (t.qty_current <= 0)         return 'نفد';
   if (t.qty_current <= t.qty_min) return 'قليل';
   if ((t.lent_qty || 0) > 0)     return 'معار';
   return 'متاح';
@@ -567,7 +603,9 @@ function barColor(s) {
 // ── Render Inventory ─────────────────────────
 function renderInventory() {
   let tools = getTools();
-  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const searchInput = document.getElementById('search-input');
+  const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  
   if (q) tools = tools.filter(t => t.name.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q));
   if (currentFilter !== 'all') tools = tools.filter(t => getStatus(t) === currentFilter);
 
@@ -577,17 +615,24 @@ function renderInventory() {
   const low    = all.filter(t => getStatus(t) === 'قليل').length;
   const lent   = all.filter(t => getStatus(t) === 'معار').length;
 
-  document.getElementById('inv-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">إجمالي</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--success)">${avail}</div><div class="stat-label">متاح</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${low}</div><div class="stat-label">قليل</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--steel)">${lent}</div><div class="stat-label">معار</div></div>
-  `;
+  const invStats = document.getElementById('inv-stats');
+  if (invStats) {
+    invStats.innerHTML = `
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">إجمالي</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--success)">${avail}</div><div class="stat-label">متاح</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${low}</div><div class="stat-label">قليل</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--steel)">${lent}</div><div class="stat-label">معار</div></div>
+    `;
+  }
 
   const alertBanner = document.getElementById('low-alert');
-  alertBanner.classList.toggle('show', low > 0 || all.filter(t=>getStatus(t)==='نفد').length > 0);
+  if (alertBanner) {
+    alertBanner.classList.toggle('show', low > 0 || all.filter(t=>getStatus(t)==='نفد').length > 0);
+  }
 
   const list = document.getElementById('inventory-list');
+  if (!list) return;
+  
   if (!tools.length) {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><p>${q||currentFilter!=='all'?'مفيش نتايج':'المخزن فاضي — ابدأ بإضافة أدوات'}</p></div>`;
     return;
@@ -616,9 +661,9 @@ function renderInventory() {
           <div class="qty-bar" style="width:${pct}%;background:${barColor(st)}"></div>
         </div>
         <div class="tool-actions">
-          <button class="btn-sm success" onclick="quickAdd('${t.id}')">+ إضافة</button>
-          <button class="btn-sm warn"    onclick="openEditModal('${t.id}')">✏️ تعديل</button>
-          <button class="btn-sm danger"  onclick="deleteTool('${t.id}')">🗑️ حذف</button>
+          <button class="btn-sm success" onclick="quickAdd('${t.docId}')">+ إضافة</button>
+          <button class="btn-sm warn"    onclick="openEditModal('${t.docId}')">✏️ تعديل</button>
+          <button class="btn-sm danger"  onclick="deleteTool('${t.docId}')">🗑️ حذف</button>
         </div>
         ${t.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:8px">📝 ${t.notes}</div>` : ''}
       </div>
@@ -636,8 +681,9 @@ function addTool() {
   if (!radio('unit'))     return alert('اختار الوحدة');
   if (v('qty_current') === '') return alert('اكتب الكمية');
 
+  const generatedId = genId();
   const tool = {
-    id:           genId(),
+    id:          generatedId,
     name:         v('tool_name'),
     category:     radio('category'),
     unit:         radio('unit'),
@@ -649,30 +695,31 @@ function addTool() {
     added_at:     new Date().toISOString()
   };
 
-  const tools = getTools();
-  tools.unshift(tool);
-  saveTools(tools);
-  addLog('إضافة', tool.id, tool.name, tool.qty_current, null, null, null);
-  showToast('تمت الإضافة ✓');
+  db.collection("prismops_tools").add(tool).then(() => {
+    addLog('إضافة', generatedId, tool.name, tool.qty_current, null, null, null);
+    showToast('تمت الإضافة للسحاب ✓');
+  });
 
-  // reset
+  // reset UI
   document.querySelectorAll('[name=category],[name=unit]').forEach(r => r.checked = false);
   ['tool_name','qty_current','qty_min','location','tool_notes'].forEach(id => document.getElementById(id).value = '');
 }
 
 // ── Quick add qty ────────────────────────────
-function quickAdd(id) {
+function quickAdd(docId) {
   const q = prompt('كام تضيف من الكمية؟', '1');
   const n = parseInt(q);
   if (!n || n <= 0) return;
-  const tools = getTools();
-  const t = tools.find(x => x.id === id);
+
+  const t = localToolsArray.find(x => x.docId === docId);
   if (!t) return;
-  t.qty_current += n;
-  saveTools(tools);
-  addLog('إضافة كمية', id, t.name, n, null, null, null);
-  renderInventory();
-  showToast(`تمت إضافة ${n} ${t.unit} ✓`);
+
+  db.collection("prismops_tools").doc(docId).update({
+    qty_current: t.qty_current + n
+  }).then(() => {
+    addLog('إضافة كمية', t.id, t.name, n, null, null, null);
+    showToast(`تمت إضافة ${n} ${t.unit} ✓`);
+  });
 }
 
 // ── Lend ─────────────────────────────────────
@@ -683,34 +730,35 @@ function populateLendSelects() {
 
   const lSel = document.getElementById('lend_tool_id');
   const rSel = document.getElementById('return_tool_id');
+  if (!lSel || !rSel) return;
 
   lSel.innerHTML = '<option value="">— اختار —</option>' +
-    avail.map(t => `<option value="${t.id}">${t.name} (متاح: ${t.qty_current} ${t.unit})</option>`).join('');
+    avail.map(t => `<option value="${t.docId}">${t.name} (متاح: ${t.qty_current} ${t.unit})</option>`).join('');
   rSel.innerHTML = '<option value="">— اختار —</option>' +
-    all.map(t => `<option value="${t.id}">${t.name} (معار: ${t.lent_qty} ${t.unit})</option>`).join('');
+    all.map(t => `<option value="${t.docId}">${t.name} (معار: ${t.lent_qty} ${t.unit})</option>`).join('');
 }
 
 function lendTool() {
-  const toolId = document.getElementById('lend_tool_id').value;
+  const docId = document.getElementById('lend_tool_id').value;
   const worker = document.getElementById('lend_worker').value.trim();
   const qty    = parseInt(document.getElementById('lend_qty').value) || 0;
   const reason = document.getElementById('lend_reason').value.trim();
 
-  if (!toolId) return alert('اختار الأداة');
+  if (!docId) return alert('اختار الأداة');
   if (!worker) return alert('اكتب اسم العامل');
   if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
 
-  const tools = getTools();
-  const t = tools.find(x => x.id === toolId);
+  const t = localToolsArray.find(x => x.docId === docId);
   if (!t) return;
   if (qty > t.qty_current) return alert(`في المخزن بس ${t.qty_current} ${t.unit}`);
 
-  t.qty_current -= qty;
-  t.lent_qty = (t.lent_qty || 0) + qty;
-  saveTools(tools);
-  addLog('إخراج', toolId, t.name, qty, worker, reason, null);
-  populateLendSelects();
-  showToast(`تم إخراج ${qty} ${t.unit} لـ ${worker}`);
+  db.collection("prismops_tools").doc(docId).update({
+    qty_current: t.qty_current - qty,
+    lent_qty: (t.lent_qty || 0) + qty
+  }).then(() => {
+    addLog('إخراج', t.id, t.name, qty, worker, reason, null);
+    showToast(`تم إخراج ${qty} ${t.unit} لـ ${worker}`);
+  });
 
   document.getElementById('lend_worker').value = '';
   document.getElementById('lend_reason').value = '';
@@ -718,29 +766,32 @@ function lendTool() {
 }
 
 function returnTool() {
-  const toolId = document.getElementById('return_tool_id').value;
+  const docId = document.getElementById('return_tool_id').value;
   const worker = document.getElementById('return_worker').value.trim();
   const qty    = parseInt(document.getElementById('return_qty').value) || 0;
   const condEl = document.querySelector('[name=return_cond]:checked');
 
-  if (!toolId)  return alert('اختار الأداة');
+  if (!docId)  return alert('اختار الأداة');
   if (!worker)  return alert('اكتب اسم العامل');
   if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
   if (!condEl)  return alert('اختار حالة الأداة');
 
-  const tools = getTools();
-  const t = tools.find(x => x.id === toolId);
+  const t = localToolsArray.find(x => x.docId === docId);
   if (!t) return;
 
   const cond = condEl.value;
-  if (cond !== 'مكسورة') t.qty_current += qty;
-  t.lent_qty = Math.max(0, (t.lent_qty || 0) - qty);
-  saveTools(tools);
-  addLog('إرجاع', toolId, t.name, qty, worker, null, cond);
-  populateLendSelects();
+  const updateData = {
+    lent_qty: Math.max(0, (t.lent_qty || 0) - qty)
+  };
+  if (cond !== 'مكسورة') {
+    updateData.qty_current = t.qty_current + qty;
+  }
 
-  const msg = cond === 'مكسورة' ? `⚠️ ${t.name} رجعت مكسورة — تم تسجيل الخسارة` : `تم استرجاع ${qty} ${t.unit} ✓`;
-  showToast(msg);
+  db.collection("prismops_tools").doc(docId).update(updateData).then(() => {
+    addLog('إرجاع', t.id, t.name, qty, worker, null, cond);
+    const msg = cond === 'مكسورة' ? `⚠️ ${t.name} رجعت مكسورة — تم تسجيل الخسارة` : `تم استرجاع ${qty} ${t.unit} ✓`;
+    showToast(msg);
+  });
 
   document.getElementById('return_worker').value = '';
   document.getElementById('return_qty').value = '1';
@@ -749,20 +800,20 @@ function returnTool() {
 
 // ── Log ──────────────────────────────────────
 function addLog(action, toolId, toolName, qty, worker, reason, condition) {
-  const log = getLog();
-  log.unshift({
+  db.collection("prismops_tool_log").add({
     timestamp: new Date().toISOString(),
     action, toolId, toolName, qty,
     worker: worker || null,
     reason: reason || null,
     condition: condition || null
   });
-  saveLog(log);
 }
 
 function renderLog() {
   const log = getLog();
   const list = document.getElementById('log-list');
+  if (!list) return;
+
   if (!log.length) {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>السجل فاضي لسه</p></div>`;
     return;
@@ -789,10 +840,10 @@ function renderLog() {
 }
 
 // ── Edit Modal ───────────────────────────────
-function openEditModal(id) {
-  const t = getTools().find(x => x.id === id);
+function openEditModal(docId) {
+  const t = localToolsArray.find(x => x.docId === docId);
   if (!t) return;
-  document.getElementById('edit_id').value   = id;
+  document.getElementById('edit_id').value   = docId; // سنخزن الـ docId هنا للتعديل
   document.getElementById('edit_name').value = t.name;
   document.getElementById('edit_qty').value  = t.qty_current;
   document.getElementById('edit_min').value  = t.qty_min || '';
@@ -802,26 +853,28 @@ function openEditModal(id) {
 }
 function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
 function saveEdit() {
-  const id = document.getElementById('edit_id').value;
-  const tools = getTools();
-  const t = tools.find(x => x.id === id);
-  if (!t) return;
-  t.name        = document.getElementById('edit_name').value.trim() || t.name;
-  t.qty_current = parseInt(document.getElementById('edit_qty').value) || 0;
-  t.qty_min     = parseInt(document.getElementById('edit_min').value) || 0;
-  t.location    = document.getElementById('edit_loc').value.trim();
-  t.notes       = document.getElementById('edit_note').value.trim();
-  saveTools(tools);
-  closeEditModal();
-  renderInventory();
-  showToast('تم التعديل ✓');
+  const docId = document.getElementById('edit_id').value;
+  
+  const updatedData = {
+    name:         document.getElementById('edit_name').value.trim(),
+    qty_current:  parseInt(document.getElementById('edit_qty').value) || 0,
+    qty_min:      parseInt(document.getElementById('edit_min').value) || 0,
+    location:     document.getElementById('edit_loc').value.trim(),
+    notes:        document.getElementById('edit_note').value.trim()
+  };
+
+  db.collection("prismops_tools").doc(docId).update(updatedData).then(() => {
+    closeEditModal();
+    showToast('تم التعديل أونلاين ✓');
+  });
 }
 
 // ── Delete ───────────────────────────────────
-function deleteTool(id) {
-  if (!confirm('تحذف الأداة دي نهائياً؟')) return;
-  saveTools(getTools().filter(t => t.id !== id));
-  renderInventory();
+function deleteTool(docId) {
+  if (!confirm('تحذف الأداة دي نهائياً من السيرفر؟')) return;
+  db.collection("prismops_tools").doc(docId).delete().then(() => {
+    showToast('تم الحذف بنجاح ✓');
+  });
 }
 
 // ── Export ───────────────────────────────────
@@ -853,64 +906,18 @@ function download(content, filename) {
 function today() { return new Date().toISOString().split('T')[0]; }
 
 function clearAll() {
-  if (!confirm('مسح كل بيانات المخزن والسجل؟ مش هيرجع!')) return;
-  localStorage.removeItem(TOOLS_KEY);
-  localStorage.removeItem(LOG_KEY);
-  showToast('تم المسح');
-  renderInventory();
-}
-
-// ── Toast ─────────────────────────────────────
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
-}
-
-// Init
-renderInventory();
-</script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-<script>
-  // كود الـ Config الخاص بمشروعك (الذي ظهر لك في الخطوات السابقة)
-  const firebaseConfig = {
-    apiKey: "AIzaSyCkj-hGssEeI9-oVBoKjRdTGeUThUEcI",
-    authDomain: "prism-factory.firebaseapp.com",
-    projectId: "prism-factory",
-    storageBucket: "prism-factory.firebasestorage.app",
-    messagingSenderId: "236073341904",
-    appId: "1:236073341904:web:3abf50039f21ae08e3dfd5",
-    measurementId: "G-WF3S1TPQEG"
-  };
-
-  // تهيئة Firebase و Firestore
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // دالة لحفظ البيانات أونلاين بدلاً من الـ localStorage
-  function saveOrderToCloud(orderData) {
-      db.collection("factory_orders").add(orderData)
-      .then(() => {
-          console.log("تم الحفظ في السحاب بنجاح!");
-      })
-      .catch((error) => {
-          console.error("حدث خطأ أثناء الحفظ: ", error);
-      });
-  }
-
-  // دالة لمراقبة البيانات وجلبها تلقائياً على كل الأجهزة في نفس اللحظة (Realtime)
-  db.collection("factory_orders").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-      let ordersList = [];
-      snapshot.forEach((doc) => {
-          ordersList.push(doc.data());
-      });
-      
-      // هنا تضع اسم الدالة المسؤولة عن عرض الجدول وتحديث الشاشة عندك وتمرر لها الـ ordersList
-      // مثال: displayOrdersInTable(ordersList);
+  if (!confirm('مسح كل البيانات نهائياً؟ الخطوة دي هتمسح داتا المصنع بالكامل من السيرفر!')) return;
+  
+  // مسح الأدوات
+  db.collection("prismops_tools").get().then((snapshot) => {
+    snapshot.forEach((doc) => doc.ref.delete());
   });
+  // مسح السجل
+  db.collection("prismops_tool_log").get().then((snapshot) => {
+    snapshot.forEach((doc) => doc.ref.delete());
+  });
+  showToast('تم مسح السيرفر');
+}
+
+// الـ Listeners الفورية بتنادي على الـ render تلقائياً أول ما تفتح الصفحة
 </script>
-</body>
-</html>
