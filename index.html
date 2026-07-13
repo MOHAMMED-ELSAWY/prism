@@ -871,5 +871,46 @@ function showToast(msg) {
 // Init
 renderInventory();
 </script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // كود الـ Config الخاص بمشروعك (الذي ظهر لك في الخطوات السابقة)
+  const firebaseConfig = {
+    apiKey: "AIzaSyCkj-hGssEeI9-oVBoKjRdTGeUThUEcI",
+    authDomain: "prism-factory.firebaseapp.com",
+    projectId: "prism-factory",
+    storageBucket: "prism-factory.firebasestorage.app",
+    messagingSenderId: "236073341904",
+    appId: "1:236073341904:web:3abf50039f21ae08e3dfd5",
+    measurementId: "G-WF3S1TPQEG"
+  };
+
+  // تهيئة Firebase و Firestore
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // دالة لحفظ البيانات أونلاين بدلاً من الـ localStorage
+  function saveOrderToCloud(orderData) {
+      db.collection("factory_orders").add(orderData)
+      .then(() => {
+          console.log("تم الحفظ في السحاب بنجاح!");
+      })
+      .catch((error) => {
+          console.error("حدث خطأ أثناء الحفظ: ", error);
+      });
+  }
+
+  // دالة لمراقبة البيانات وجلبها تلقائياً على كل الأجهزة في نفس اللحظة (Realtime)
+  db.collection("factory_orders").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+      let ordersList = [];
+      snapshot.forEach((doc) => {
+          ordersList.push(doc.data());
+      });
+      
+      // هنا تضع اسم الدالة المسؤولة عن عرض الجدول وتحديث الشاشة عندك وتمرر لها الـ ordersList
+      // مثال: displayOrdersInTable(ordersList);
+  });
+</script>
 </body>
 </html>
