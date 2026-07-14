@@ -324,15 +324,7 @@
     <input type="text" id="search-input" placeholder="ابحث عن أداة..." oninput="renderInventory()">
     <span class="search-icon">🔍</span>
   </div>
-
-  <div class="filter-row">
-    <button class="filter-btn active" onclick="setFilter('all', this)">الكل</button>
-    <button class="filter-btn" onclick="setFilter('متاح', this)">✅ متاح</button>
-    <button class="filter-btn" onclick="setFilter('قليل', this)">⚠️ قليل</button>
-    <button class="filter-btn" onclick="setFilter('نفد', this)">❌ نفد</button>
-    <button class="filter-btn" onclick="setFilter('معار', this)">🔄 معار</button>
-  </div>
- <div class="field">
+<div class="field">
       <label>الفئة</label>
       <div class="radio-group">
         <input type="radio" name="category" id="c1" value="مفاتيح"><label for="c1">🔑 مفاتيح + عده خفيفه </label>
@@ -343,6 +335,15 @@
         <input type="radio" name="category" id="c6" value="حماية"><label for="c6">مستلزمات تشغيل</label>
         <input type="radio" name="category" id="c7" value="تاني"><label for="c7">📦 اخر</label>
       </div>
+    </div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all', this)">الكل</button>
+    <button class="filter-btn" onclick="setFilter('متاح', this)">✅ متاح</button>
+    <button class="filter-btn" onclick="setFilter('قليل', this)">⚠️ قليل</button>
+    <button class="filter-btn" onclick="setFilter('نفد', this)">❌ نفد</button>
+    <button class="filter-btn" onclick="setFilter('معار', this)">🔄 معار</button>
+  </div>
+
   <div id="inventory-list"></div>
 </div>
 
@@ -379,8 +380,7 @@
         <input type="radio" name="unit" id="u3" value="متر"><label for="u3">متر</label>
         <input type="radio" name="unit" id="u4" value="كيلو"><label for="u4">كيلو</label>
         <input type="radio" name="unit" id="u5" value="كرتونه"><label for="u5">كرتونه</label>
-        <input type="radio" name="unit" id="u5" value="باكو"><label for="u5">باكو </label>
-
+        <input type="radio" name="unit" id="u5" value="باكو"><label for="u5">باكو</label>
       </div>
     </div>
   </div>
