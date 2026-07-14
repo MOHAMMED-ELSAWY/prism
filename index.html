@@ -325,6 +325,20 @@
     <span class="search-icon">🔍</span>
   </div>
 
+  <div class="field">
+    <label>الفئة</label>
+    <select id="category-filter" onchange="renderInventory()">
+      <option value="all">كل الفئات</option>
+      <option value="مفاتيح">🔑 مفاتيح + عده خفيفه</option>
+      <option value="قياس">شنيور و مثقاب</option>
+      <option value="لحام">🔥 مكينة لحام</option>
+      <option value="قطع">⚙️ صواريخ</option>
+      <option value="كهرباء">⚡ كبلات كهرباء</option>
+      <option value="حماية">مستلزمات تشغيل</option>
+      <option value="تاني">📦 اخر</option>
+    </select>
+  </div>
+
   <div class="filter-row">
     <button class="filter-btn active" onclick="setFilter('all', this)">الكل</button>
     <button class="filter-btn" onclick="setFilter('متاح', this)">✅ متاح</button>
@@ -369,7 +383,7 @@
         <input type="radio" name="unit" id="u3" value="متر"><label for="u3">متر</label>
         <input type="radio" name="unit" id="u4" value="كيلو"><label for="u4">كيلو</label>
         <input type="radio" name="unit" id="u5" value="كرتونه"><label for="u5">كرتونه</label>
-        <input type="radio" name="unit" id="u5" value="باكو"><label for="u5">باكو</label>
+        <input type="radio" name="unit" id="u6" value="باكو"><label for="u6">باكو</label>
       </div>
     </div>
   </div>
@@ -606,9 +620,13 @@ function renderInventory() {
   let tools = getTools();
   const searchInput = document.getElementById('search-input');
   const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
-  
+
+  const categoryFilterEl = document.getElementById('category-filter');
+  const categoryFilter = categoryFilterEl ? categoryFilterEl.value : 'all';
+
   if (q) tools = tools.filter(t => t.name.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q));
   if (currentFilter !== 'all') tools = tools.filter(t => getStatus(t) === currentFilter);
+  if (categoryFilter && categoryFilter !== 'all') tools = tools.filter(t => t.category === categoryFilter);
 
   const all = getTools();
   const total  = all.length;
@@ -633,9 +651,10 @@ function renderInventory() {
 
   const list = document.getElementById('inventory-list');
   if (!list) return;
-  
+
   if (!tools.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><p>${q||currentFilter!=='all'?'مفيش نتايج':'المخزن فاضي — ابدأ بإضافة أدوات'}</p></div>`;
+    const hasActiveFilters = q || currentFilter !== 'all' || (categoryFilter && categoryFilter !== 'all');
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><p>${hasActiveFilters?'مفيش نتايج':'المخزن فاضي — ابدأ بإضافة أدوات'}</p></div>`;
     return;
   }
 
@@ -855,7 +874,7 @@ function openEditModal(docId) {
 function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
 function saveEdit() {
   const docId = document.getElementById('edit_id').value;
-  
+
   const updatedData = {
     name:         document.getElementById('edit_name').value.trim(),
     qty_current:  parseInt(document.getElementById('edit_qty').value) || 0,
@@ -908,7 +927,7 @@ function today() { return new Date().toISOString().split('T')[0]; }
 
 function clearAll() {
   if (!confirm('مسح كل البيانات نهائياً؟ الخطوة دي هتمسح داتا المصنع بالكامل من السيرفر!')) return;
-  
+
   // مسح الأدوات
   db.collection("prismops_tools").get().then((snapshot) => {
     snapshot.forEach((doc) => doc.ref.delete());
@@ -922,3 +941,5 @@ function clearAll() {
 
 // الـ Listeners الفورية بتنادي على الـ render تلقائياً أول ما تفتح الصفحة
 </script>
+</body>
+</html>
