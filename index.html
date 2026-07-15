@@ -260,6 +260,38 @@
 
   .tool-actions { display: flex; gap: 7px; flex-wrap: wrap; }
 
+  /* INVENTORY VIEW MODES */
+  .view-toggle { display: flex; gap: 7px; margin-bottom: 14px; }
+  .view-btn {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 100px; color: var(--muted);
+    font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 7px 16px; cursor: pointer; transition: .15s; flex: 1;
+  }
+  .view-btn.active { background: rgba(232,131,42,.15); border-color: var(--amber); color: var(--amber); }
+  .view-btn:hover:not(.active) { border-color: #3a4356; }
+
+  #inventory-list.view-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  @media (min-width: 640px)  { #inventory-list.view-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 960px)  { #inventory-list.view-grid { grid-template-columns: repeat(4, 1fr); } }
+  #inventory-list.view-grid .empty-state { grid-column: 1 / -1; }
+
+  #inventory-list.view-grid .tool-card { padding: 12px; margin-bottom: 0; }
+  #inventory-list.view-grid .tool-header { flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  #inventory-list.view-grid .tool-name { font-size: 14px; line-height: 1.3; }
+  #inventory-list.view-grid .tool-id { font-size: 10px; }
+  #inventory-list.view-grid .tool-meta { gap: 4px; margin-bottom: 8px; }
+  #inventory-list.view-grid .meta-chip { font-size: 11px; padding: 3px 7px; }
+  #inventory-list.view-grid .tool-actions { gap: 5px; }
+  #inventory-list.view-grid .tool-actions .btn-sm { flex: 1; text-align: center; padding: 5px 4px; font-size: 11px; }
+  #inventory-list.view-grid .qty-bar-wrap { margin-bottom: 8px; }
+
+  #inventory-list.view-list .tool-card { margin-bottom: 10px; }
+
   /* SEARCH */
   .search-wrap { position: relative; margin-bottom: 14px; }
   .search-wrap input { padding-right: 38px; }
@@ -431,7 +463,12 @@
     <button class="filter-btn" onclick="setFilter('معار', this)">🔄 معار</button>
   </div>
 
-  <div id="inventory-list"></div>
+  <div class="view-toggle">
+    <button class="view-btn active" id="view-grid-btn" onclick="setView('grid')">🔲 كروت</button>
+    <button class="view-btn" id="view-list-btn" onclick="setView('list')">📃 قائمة</button>
+  </div>
+
+  <div id="inventory-list" class="view-grid"></div>
 </div>
 
 <!-- ══════════════════════════════════
@@ -657,6 +694,7 @@ let localToolsArray = [];
 let localLogArray = [];
 let currentFilter = 'all';
 let currentLogFilter = 'all';
+let currentView = 'grid';
 let comboToolsCache = { lend: [], return: [] };
 
 // ── Realtime Synchronization (الربط اللحظي) ──
@@ -702,6 +740,20 @@ function setFilter(val, btn) {
   document.querySelectorAll('#panel-inventory .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderInventory();
+}
+
+// ── View mode (grid / list) ──────────────────
+function setView(mode) {
+  currentView = mode;
+  const list = document.getElementById('inventory-list');
+  if (list) {
+    list.classList.toggle('view-grid', mode === 'grid');
+    list.classList.toggle('view-list', mode === 'list');
+  }
+  const gridBtn = document.getElementById('view-grid-btn');
+  const listBtn = document.getElementById('view-list-btn');
+  if (gridBtn) gridBtn.classList.toggle('active', mode === 'grid');
+  if (listBtn) listBtn.classList.toggle('active', mode === 'list');
 }
 
 // ── Filter (log) ─────────────────────────────
