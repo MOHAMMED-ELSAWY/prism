@@ -766,9 +766,9 @@ function setLogFilter(val, btn) {
 
 // ── Status helpers ───────────────────────────
 function getStatus(t) {
+  if ((t.lent_qty || 0) > 0)      return 'معار';
   if (t.qty_current <= 0)         return 'نفد';
   if (t.qty_current <= t.qty_min) return 'قليل';
-  if ((t.lent_qty || 0) > 0)     return 'معار';
   return 'متاح';
 }
 function statusBadge(s) {
@@ -795,7 +795,8 @@ function renderInventory() {
   const all = getTools();
   const total  = all.length;
   const avail  = all.filter(t => getStatus(t) === 'متاح').length;
-  const low    = all.filter(t => getStatus(t) === 'قليل').length;
+  const low    = all.filter(t => t.qty_current > 0 && t.qty_current <= t.qty_min).length;
+  const out    = all.filter(t => t.qty_current <= 0).length;
   const lent   = all.filter(t => getStatus(t) === 'معار').length;
 
   const invStats = document.getElementById('inv-stats');
@@ -810,7 +811,7 @@ function renderInventory() {
 
   const alertBanner = document.getElementById('low-alert');
   if (alertBanner) {
-    alertBanner.classList.toggle('show', low > 0 || all.filter(t=>getStatus(t)==='نفد').length > 0);
+    alertBanner.classList.toggle('show', low > 0 || out > 0);
   }
 
   const list = document.getElementById('inventory-list');
@@ -824,10 +825,12 @@ function renderInventory() {
 
   list.innerHTML = tools.map(t => {
     const st  = getStatus(t);
+    const isOutOfStock = t.qty_current <= 0;
+    const isLowStock   = !isOutOfStock && t.qty_current <= t.qty_min;
     const max = Math.max(t.qty_current + (t.lent_qty||0), t.qty_min || 1, 1);
     const pct = Math.round((t.qty_current / max) * 100);
     return `
-      <div class="tool-card ${st==='قليل'?'low-stock':st==='نفد'?'out-stock':''}">
+      <div class="tool-card ${isLowStock?'low-stock':isOutOfStock?'out-stock':''}">
         <div class="tool-header">
           <div>
             <div class="tool-id">${t.id} · ${t.category||'عام'}</div>
