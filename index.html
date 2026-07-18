@@ -382,6 +382,17 @@
   .combo-item-meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
   .combo-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
 
+  .combo-hint {
+    margin-top: 8px; padding: 9px 12px; border-radius: 8px;
+    font-size: 12px; line-height: 1.6;
+  }
+  .combo-hint-tool {
+    background: rgba(var(--steel-rgb),.1); border: 1px solid rgba(var(--steel-rgb),.3); color: var(--steel);
+  }
+  .combo-hint-good {
+    background: rgba(var(--warn-rgb),.1); border: 1px solid rgba(var(--warn-rgb),.3); color: var(--warn);
+  }
+
   /* MODAL */
   .modal-overlay {
     display: none; position: fixed; inset: 0;
@@ -545,6 +556,14 @@
     </div>
 
     <div class="field">
+      <label>نوع الصنف</label>
+      <div class="radio-group" style="grid-template-columns:1fr 1fr">
+        <input type="radio" name="item_type" id="it1" value="tool" checked><label for="it1">🔧 أداة/عدة</label>
+        <input type="radio" name="item_type" id="it2" value="good"><label for="it2">📦 بضاعة/مستهلك </label>
+      </div>
+    </div>
+
+    <div class="field">
       <label>الفئة</label>
       <div class="radio-group">
         <input type="radio" name="category" id="c1" value="مفاتيح"><label for="c1">🔑 مفاتيح + عده خفيفه </label>
@@ -603,15 +622,16 @@
 ══════════════════════════════════ -->
 <div class="panel" id="panel-lend">
   <div class="section-card">
-    <div class="section-title">إخراج أداة (استعارة)</div>
+    <div class="section-title">إخراج / صرف صنف</div>
 
     <div class="field">
-      <label>اختار الأداة</label>
+      <label>اختار الصنف</label>
       <div class="combo-wrap">
-        <input type="text" id="lend_tool_search" class="combo-input" placeholder="ابحث عن أداة..." autocomplete="off" oninput="filterCombo('lend')" onfocus="filterCombo('lend')">
+        <input type="text" id="lend_tool_search" class="combo-input" placeholder="ابحث عن أداة أو بضاعة..." autocomplete="off" oninput="filterCombo('lend')" onfocus="filterCombo('lend')">
         <input type="hidden" id="lend_tool_id">
         <div class="combo-dropdown" id="lend_tool_dropdown"></div>
       </div>
+      <div class="combo-hint" id="lend_type_hint" style="display:none"></div>
     </div>
 
     <div class="field">
@@ -684,6 +704,7 @@
   <div class="filter-row" id="log-filter-row">
     <button class="filter-btn active" onclick="setLogFilter('all', this)">الكل</button>
     <button class="filter-btn" onclick="setLogFilter('إخراج', this)">📤 إخراج</button>
+    <button class="filter-btn" onclick="setLogFilter('صرف', this)">📦 صرف</button>
     <button class="filter-btn" onclick="setLogFilter('إرجاع', this)">📥 إرجاع</button>
     <button class="filter-btn" onclick="setLogFilter('إضافة', this)">➕ إضافة</button>
   </div>
@@ -705,7 +726,7 @@
   <div class="section-card" style="margin-top:14px">
     <div class="section-title">تصدير السجل</div>
     <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:16px">
-      صدّر كل حركات الإخراج والإرجاع.
+      صدّر كل حركات الإخراج والصرف والإرجاع.
     </p>
     <button class="btn-primary btn-steel-grad" onclick="exportLogCSV()">⬇️ تحميل CSV — السجل</button>
   </div>
@@ -721,6 +742,13 @@
     <div class="modal-title">✏️ تعديل الأداة</div>
     <input type="hidden" id="edit_id">
     <div class="field"><label>اسم الأداة</label><input type="text" id="edit_name"></div>
+    <div class="field">
+      <label>نوع الصنف</label>
+      <div class="radio-group" style="grid-template-columns:1fr 1fr">
+        <input type="radio" name="edit_item_type" id="eit1" value="tool"><label for="eit1">🔧 أداة — لازم ترجع</label>
+        <input type="radio" name="edit_item_type" id="eit2" value="good"><label for="eit2">📦 بضاعة — بتتصرف</label>
+      </div>
+    </div>
     <div class="field"><label>الكمية الحالية</label><input type="number" id="edit_qty" min="0"></div>
     <div class="field"><label>الحد الأدنى</label><input type="number" id="edit_min" min="0"></div>
     <div class="field"><label>موقع التخزين</label><input type="text" id="edit_loc"></div>
@@ -841,7 +869,8 @@ function setLogFilter(val, btn) {
 
 // ── Status helpers ───────────────────────────
 function getStatus(t) {
-  if ((t.lent_qty || 0) > 0)      return 'معار';
+  const type = t.item_type || 'tool'; // توافق مع الأصناف القديمة اللي مفيهاش النوع
+  if (type === 'tool' && (t.lent_qty || 0) > 0) return 'معار';
   if (t.qty_current <= 0)         return 'نفد';
   if (t.qty_current <= t.qty_min) return 'قليل';
   return 'متاح';
@@ -900,6 +929,7 @@ function renderInventory() {
 
   list.innerHTML = tools.map(t => {
     const st  = getStatus(t);
+    const type = t.item_type || 'tool';
     const isOutOfStock = t.qty_current <= 0;
     const isLowStock   = !isOutOfStock && t.qty_current <= t.qty_min;
     const max = Math.max(t.qty_current + (t.lent_qty||0), t.qty_min || 1, 1);
@@ -908,7 +938,7 @@ function renderInventory() {
       <div class="tool-card ${isLowStock?'low-stock':isOutOfStock?'out-stock':''}">
         <div class="tool-header">
           <div>
-            <div class="tool-id">${t.id} · ${t.category||'عام'}</div>
+            <div class="tool-id">${t.id} · ${t.category||'عام'} · ${type==='good' ? '📦 بضاعة' : '🔧 أداة'}</div>
             <div class="tool-name">${t.name}</div>
           </div>
           ${statusBadge(st)}
@@ -939,6 +969,7 @@ function addTool() {
   const radio = name => { const el = document.querySelector(`[name=${name}]:checked`); return el ? el.value : ''; };
 
   if (!v('tool_name'))    return alert('اكتب اسم الأداة');
+  if (!radio('item_type')) return alert('اختار نوع الصنف');
   if (!radio('category')) return alert('اختار الفئة');
   if (!radio('unit'))     return alert('اختار الوحدة');
   if (v('qty_current') === '') return alert('اكتب الكمية');
@@ -947,6 +978,7 @@ function addTool() {
   const tool = {
     id:          generatedId,
     name:         v('tool_name'),
+    item_type:    radio('item_type'), // 'tool' لازم ترجع المخزن، 'good' بيتصرف من غير رجوع
     category:     radio('category'),
     unit:         radio('unit'),
     qty_current:  parseInt(v('qty_current')) || 0,
@@ -964,6 +996,7 @@ function addTool() {
 
   // reset UI
   document.querySelectorAll('[name=category],[name=unit]').forEach(r => r.checked = false);
+  document.getElementById('it1').checked = true; // رجّع الافتراضي لـ "أداة"
   ['tool_name','qty_current','qty_min','location','tool_notes'].forEach(id => document.getElementById(id).value = '');
 }
 
@@ -988,7 +1021,7 @@ function quickAdd(docId) {
 function populateLendSelects() {
   const tools = getTools();
   comboToolsCache.lend   = tools.filter(t => t.qty_current > 0);
-  comboToolsCache.return = tools.filter(t => (t.lent_qty||0) > 0);
+  comboToolsCache.return = tools.filter(t => (t.item_type || 'tool') === 'tool' && (t.lent_qty||0) > 0);
   renderComboDropdown('lend', comboToolsCache.lend);
   renderComboDropdown('return', comboToolsCache.return);
 }
@@ -1012,12 +1045,18 @@ function renderComboDropdown(type, list) {
     dd.innerHTML = `<div class="combo-empty">مفيش أدوات مطابقة</div>`;
     return;
   }
-  dd.innerHTML = list.map(t => `
+  dd.innerHTML = list.map(t => {
+    const isGood = (t.item_type || 'tool') === 'good';
+    const meta = type === 'lend'
+      ? `متاح: ${t.qty_current} ${t.unit||''} · ${isGood ? '📦 بضاعة' : '🔧 أداة'}`
+      : `معار: ${t.lent_qty} ${t.unit||''}`;
+    return `
     <div class="combo-item" onclick="selectComboItem('${type}','${t.docId}')">
       <span class="combo-item-name">${t.name}</span>
-      <span class="combo-item-meta">${type === 'lend' ? `متاح: ${t.qty_current} ${t.unit||''}` : `معار: ${t.lent_qty} ${t.unit||''}`}</span>
+      <span class="combo-item-meta">${meta}</span>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function selectComboItem(type, docId) {
@@ -1027,6 +1066,18 @@ function selectComboItem(type, docId) {
   document.getElementById(type + '_tool_id').value = docId;
   document.getElementById(type + '_tool_search').value = t.name;
   closeCombo(type);
+
+  if (type === 'lend') {
+    const hint = document.getElementById('lend_type_hint');
+    if (hint) {
+      const isGood = (t.item_type || 'tool') === 'good';
+      hint.style.display = 'block';
+      hint.className = isGood ? 'combo-hint combo-hint-good' : 'combo-hint combo-hint-tool';
+      hint.textContent = isGood
+        ? '📦 صنف بضاعة/مستهلك — هيتصرف من المخزون ومش هيتسجل في "معار" ولا محتاج ترجيع'
+        : '🔧 صنف أداة/عدة — هتتسجل في "معار" ولازم ترجع المخزن بعد الاستخدام';
+    }
+  }
 }
 
 function openCombo(type) {
@@ -1049,7 +1100,7 @@ function lendTool() {
   const qty    = parseInt(document.getElementById('lend_qty').value) || 0;
   const reason = document.getElementById('lend_reason').value.trim();
 
-  if (!docId) return alert('اختار الأداة');
+  if (!docId) return alert('اختار الصنف');
   if (!worker) return alert('اكتب اسم العامل');
   if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
 
@@ -1057,19 +1108,34 @@ function lendTool() {
   if (!t) return;
   if (qty > t.qty_current) return alert(`في المخزن بس ${t.qty_current} ${t.unit}`);
 
-  db.collection("prismops_tools").doc(docId).update({
-    qty_current: t.qty_current - qty,
-    lent_qty: (t.lent_qty || 0) + qty
-  }).then(() => {
-    addLog('إخراج', t.id, t.name, qty, worker, reason, null);
-    showToast(`تم إخراج ${qty} ${t.unit} لـ ${worker}`);
-  });
+  const isGood = (t.item_type || 'tool') === 'good';
+
+  if (isGood) {
+    // بضاعة/مستهلك: بيتصرف نهائي من المخزون، من غير تسجيل "معار" ومن غير انتظار رجوع
+    db.collection("prismops_tools").doc(docId).update({
+      qty_current: t.qty_current - qty
+    }).then(() => {
+      addLog('صرف', t.id, t.name, qty, worker, reason, null);
+      showToast(`تم صرف ${qty} ${t.unit} لـ ${worker}`);
+    });
+  } else {
+    // أداة/عدة: بتتسجل معارة ولازم ترجع المخزن
+    db.collection("prismops_tools").doc(docId).update({
+      qty_current: t.qty_current - qty,
+      lent_qty: (t.lent_qty || 0) + qty
+    }).then(() => {
+      addLog('إخراج', t.id, t.name, qty, worker, reason, null);
+      showToast(`تم إخراج ${qty} ${t.unit} لـ ${worker}`);
+    });
+  }
 
   document.getElementById('lend_worker').value = '';
   document.getElementById('lend_reason').value = '';
   document.getElementById('lend_qty').value = '1';
   document.getElementById('lend_tool_search').value = '';
   document.getElementById('lend_tool_id').value = '';
+  const hint = document.getElementById('lend_type_hint');
+  if (hint) hint.style.display = 'none';
 }
 
 function returnTool() {
@@ -1145,7 +1211,7 @@ function renderLog() {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>${hasActiveFilters ? 'مفيش نتايج مطابقة' : 'السجل فاضي لسه'}</p></div>`;
     return;
   }
-  const colorMap = { 'إخراج':'var(--amber)', 'إرجاع':'var(--success)', 'إضافة':'var(--steel)', 'إضافة كمية':'var(--steel)' };
+  const colorMap = { 'إخراج':'var(--amber)', 'إرجاع':'var(--success)', 'إضافة':'var(--steel)', 'إضافة كمية':'var(--steel)', 'صرف':'var(--warn)' };
   list.innerHTML = log.map(l => {
     const dt  = new Date(l.timestamp);
     const dateStr = `${dt.toLocaleDateString('ar-EG')} ${dt.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}`;
@@ -1172,6 +1238,9 @@ function openEditModal(docId) {
   if (!t) return;
   document.getElementById('edit_id').value   = docId; // سنخزن الـ docId هنا للتعديل
   document.getElementById('edit_name').value = t.name;
+  const type = t.item_type || 'tool';
+  const typeRadio = document.getElementById(type === 'good' ? 'eit2' : 'eit1');
+  if (typeRadio) typeRadio.checked = true;
   document.getElementById('edit_qty').value  = t.qty_current;
   document.getElementById('edit_min').value  = t.qty_min || '';
   document.getElementById('edit_loc').value  = t.location || '';
@@ -1181,9 +1250,11 @@ function openEditModal(docId) {
 function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
 function saveEdit() {
   const docId = document.getElementById('edit_id').value;
+  const typeEl = document.querySelector('[name=edit_item_type]:checked');
 
   const updatedData = {
     name:         document.getElementById('edit_name').value.trim(),
+    item_type:    typeEl ? typeEl.value : 'tool',
     qty_current:  parseInt(document.getElementById('edit_qty').value) || 0,
     qty_min:      parseInt(document.getElementById('edit_min').value) || 0,
     location:     document.getElementById('edit_loc').value.trim(),
@@ -1208,7 +1279,7 @@ function deleteTool(docId) {
 function exportInventoryCSV() {
   const tools = getTools();
   if (!tools.length) return alert('المخزن فاضي');
-  const cols = ['id','name','category','unit','qty_current','qty_min','lent_qty','location','notes','added_at'];
+  const cols = ['id','name','item_type','category','unit','qty_current','qty_min','lent_qty','location','notes','added_at'];
   const rows = [cols.join(','), ...tools.map(t => cols.map(c => {
     const v = t[c] ?? ''; return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
   }).join(','))];
