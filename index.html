@@ -320,6 +320,22 @@
 
   .tool-actions { display: flex; gap: 7px; flex-wrap: wrap; }
 
+  /* WORKERS */
+  .worker-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 15px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    animation: fadeInUp .3s ease both;
+  }
+  .worker-card .worker-name { font-size: 14px; font-weight: 700; }
+  .custody-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; margin-bottom: 8px; font-size: 13px;
+  }
+  .custody-item:last-child { margin-bottom: 0; }
+  .custody-item .custody-qty { font-weight: 700; color: var(--steel); white-space: nowrap; }
+
   /* INVENTORY VIEW MODES */
   .view-toggle { display: flex; gap: 7px; margin-bottom: 14px; }
   .view-btn {
@@ -497,6 +513,7 @@
   <button class="tab-btn active" onclick="switchTab('inventory')">📦 المخزن</button>
   <button class="tab-btn" onclick="switchTab('add')">➕ إضافة</button>
   <button class="tab-btn" onclick="switchTab('lend')">🔄 استعارة</button>
+  <button class="tab-btn" onclick="switchTab('workers')">👷 العمال</button>
   <button class="tab-btn" onclick="switchTab('log')">📋 السجل</button>
   <button class="tab-btn" onclick="switchTab('export')">📤 تصدير</button>
 </div>
@@ -558,8 +575,8 @@
     <div class="field">
       <label>نوع الصنف</label>
       <div class="radio-group" style="grid-template-columns:1fr 1fr">
-        <input type="radio" name="item_type" id="it1" value="tool" checked><label for="it1">🔧 أداة/عدة</label>
-        <input type="radio" name="item_type" id="it2" value="good"><label for="it2">📦 بضاعة/مستهلك </label>
+        <input type="radio" name="item_type" id="it1" value="tool" checked><label for="it1">🔧 أداة/عدة — لازم ترجع المخزن</label>
+        <input type="radio" name="item_type" id="it2" value="good"><label for="it2">📦 بضاعة/مستهلك — بتتصرف من غير رجوع</label>
       </div>
     </div>
 
@@ -636,7 +653,11 @@
 
     <div class="field">
       <label>اسم العامل</label>
-      <input type="text" id="lend_worker" placeholder="مثال: محمود الحداد">
+      <div class="combo-wrap">
+        <input type="text" id="lend_worker_search" class="combo-input" placeholder="ابحث أو اكتب اسم عامل جديد..." autocomplete="off" oninput="filterWorkerCombo('lend_worker')" onfocus="filterWorkerCombo('lend_worker')">
+        <input type="hidden" id="lend_worker_id">
+        <div class="combo-dropdown" id="lend_worker_dropdown"></div>
+      </div>
     </div>
 
     <div class="field">
@@ -666,7 +687,11 @@
 
     <div class="field">
       <label>اسم العامل</label>
-      <input type="text" id="return_worker" placeholder="مثال: محمود الحداد">
+      <div class="combo-wrap">
+        <input type="text" id="return_worker_search" class="combo-input" placeholder="ابحث أو اكتب اسم عامل جديد..." autocomplete="off" oninput="filterWorkerCombo('return_worker')" onfocus="filterWorkerCombo('return_worker')">
+        <input type="hidden" id="return_worker_id">
+        <div class="combo-dropdown" id="return_worker_dropdown"></div>
+      </div>
     </div>
 
     <div class="field">
@@ -685,6 +710,39 @@
 
     <button class="btn-primary btn-success-grad" onclick="returnTool()">📥 إرجاع</button>
   </div>
+</div>
+
+<!-- ══════════════════════════════════
+     TAB — WORKERS
+══════════════════════════════════ -->
+<div class="panel" id="panel-workers">
+  <div class="section-card">
+    <div class="section-title">إضافة عامل</div>
+    <div class="field">
+      <label>اسم العامل</label>
+      <input type="text" id="new_worker_name" placeholder="مثال: محمود الحداد" onkeydown="if(event.key==='Enter') addWorker()">
+    </div>
+    <button class="btn-primary" onclick="addWorker()">👷 إضافة عامل</button>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">عهدة العامل — إيه اللي معاه دلوقتي</div>
+    <div class="field">
+      <label>اختار العامل</label>
+      <div class="combo-wrap">
+        <input type="text" id="lookup_worker_search" class="combo-input" placeholder="ابحث عن عامل..." autocomplete="off" oninput="filterWorkerCombo('lookup_worker')" onfocus="filterWorkerCombo('lookup_worker')">
+        <input type="hidden" id="lookup_worker_id">
+        <div class="combo-dropdown" id="lookup_worker_dropdown"></div>
+      </div>
+    </div>
+    <button class="btn-primary btn-steel-grad" onclick="showWorkerCustody()">🔍 عرض العهدة</button>
+    <div id="worker-custody-result" style="margin-top:14px"></div>
+  </div>
+
+  <div class="toolbar">
+    <span class="toolbar-title">كل العمال</span>
+  </div>
+  <div id="workers-list"></div>
 </div>
 
 <!-- ══════════════════════════════════
@@ -781,10 +839,12 @@ const db = firebase.firestore();
 // مصفوفات محلية مؤقتة عشان الـ Render يشتغل بسرعة
 let localToolsArray = [];
 let localLogArray = [];
+let localWorkersArray = [];
 let currentFilter = 'all';
 let currentLogFilter = 'all';
 let currentView = 'grid';
 let comboToolsCache = { lend: [], return: [] };
+let workersCache = [];
 
 // ── Realtime Synchronization (الربط اللحظي) ──
 // 1. مراقبة الأدوات
@@ -806,9 +866,21 @@ db.collection("prismops_tool_log").orderBy("timestamp", "desc").onSnapshot((snap
   renderLog();
 });
 
+// 3. مراقبة العمال
+db.collection("prismops_workers").onSnapshot((snapshot) => {
+  localWorkersArray = [];
+  snapshot.forEach((doc) => {
+    localWorkersArray.push({ docId: doc.id, ...doc.data() });
+  });
+  workersCache = localWorkersArray.slice().sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ar'));
+  renderWorkersList();
+  populateWorkerCombos();
+});
+
 // ── Storage Alternatives ─────────────────────
-function getTools() { return localToolsArray; }
-function getLog()   { return localLogArray; }
+function getTools()   { return localToolsArray; }
+function getLog()     { return localLogArray; }
+function getWorkers() { return localWorkersArray; }
 function genId() { return 'T-' + Date.now().toString(36).toUpperCase(); }
 
 // ── Theme (light / dark) ─────────────────────
@@ -830,10 +902,11 @@ function switchTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
-  const idx = ['inventory','add','lend','log','export'].indexOf(name);
+  const idx = ['inventory','add','lend','workers','log','export'].indexOf(name);
   if (idx !== -1) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (name === 'inventory') renderInventory();
-  if (name === 'lend')      populateLendSelects();
+  if (name === 'lend')      { populateLendSelects(); populateWorkerCombos(); }
+  if (name === 'workers')   { renderWorkersList(); populateWorkerCombos(); }
   if (name === 'log')       renderLog();
 }
 
@@ -1092,16 +1165,146 @@ function closeCombo(type) {
 document.addEventListener('click', function(e) {
   if (!e.target.closest('#lend_tool_dropdown') && !e.target.closest('#lend_tool_search'))     closeCombo('lend');
   if (!e.target.closest('#return_tool_dropdown') && !e.target.closest('#return_tool_search')) closeCombo('return');
+  ['lend_worker','return_worker','lookup_worker'].forEach(type => {
+    if (!e.target.closest('#' + type + '_dropdown') && !e.target.closest('#' + type + '_search')) closeWorkerCombo(type);
+  });
 });
+
+// ── Workers: management + searchable combobox ───
+function addWorker() {
+  const input = document.getElementById('new_worker_name');
+  const name = input.value.trim();
+  if (!name) return alert('اكتب اسم العامل');
+
+  const exists = getWorkers().some(w => (w.name || '').trim() === name);
+  if (exists) { showToast('العامل ده موجود بالفعل'); input.value = ''; return; }
+
+  db.collection("prismops_workers").add({ name, added_at: new Date().toISOString() }).then(() => {
+    showToast(`تمت إضافة ${name} ✓`);
+  });
+  input.value = '';
+}
+
+function deleteWorker(docId) {
+  if (!confirm('تحذف العامل ده من القائمة؟ (سجل الحركات القديمة بتاعته هيفضل موجود)')) return;
+  db.collection("prismops_workers").doc(docId).delete().then(() => {
+    showToast('تم الحذف ✓');
+  });
+}
+
+function renderWorkersList() {
+  const list = document.getElementById('workers-list');
+  if (!list) return;
+  const workers = getWorkers().slice().sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ar'));
+  if (!workers.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">👷</div><p>لسه مفيش عمال متسجلين</p></div>`;
+    return;
+  }
+  list.innerHTML = workers.map(w => `
+    <div class="worker-card">
+      <span class="worker-name">👷 ${w.name}</span>
+      <button class="btn-sm danger" onclick="deleteWorker('${w.docId}')">🗑️ حذف</button>
+    </div>
+  `).join('');
+}
+
+// ensures a typed worker name is saved to the workers list even if picked by free typing
+function ensureWorkerExists(name) {
+  if (!name) return;
+  const exists = getWorkers().some(w => (w.name || '').trim() === name);
+  if (!exists) {
+    db.collection("prismops_workers").add({ name, added_at: new Date().toISOString() });
+  }
+}
+
+function populateWorkerCombos() {
+  ['lend_worker','return_worker','lookup_worker'].forEach(type => renderWorkerComboDropdown(type, workersCache));
+}
+
+function filterWorkerCombo(type) {
+  const input = document.getElementById(type + '_search');
+  if (!input) return;
+  const q = input.value.trim().toLowerCase();
+  const filtered = q ? workersCache.filter(w => (w.name||'').toLowerCase().includes(q)) : workersCache;
+  renderWorkerComboDropdown(type, filtered);
+  openWorkerCombo(type);
+  // اسم مكتوب بحرية (مش من القائمة) لسه اسمه صالح؛ هيتسجل تلقائي وقت الحفظ
+  document.getElementById(type + '_id').value = input.value.trim();
+}
+
+function renderWorkerComboDropdown(type, list) {
+  const dd = document.getElementById(type + '_dropdown');
+  if (!dd) return;
+  if (!list.length) {
+    dd.innerHTML = `<div class="combo-empty">مفيش عمال — اكتب الاسم واحفظ عادي</div>`;
+    return;
+  }
+  dd.innerHTML = list.map(w => `
+    <div class="combo-item" onclick="selectWorkerComboItem('${type}','${w.docId}')">
+      <span class="combo-item-name">👷 ${w.name}</span>
+    </div>
+  `).join('');
+}
+
+function selectWorkerComboItem(type, docId) {
+  const w = workersCache.find(x => x.docId === docId);
+  if (!w) return;
+  document.getElementById(type + '_id').value = w.name;
+  document.getElementById(type + '_search').value = w.name;
+  closeWorkerCombo(type);
+}
+
+function openWorkerCombo(type) {
+  const dd = document.getElementById(type + '_dropdown');
+  if (dd) dd.classList.add('open');
+}
+function closeWorkerCombo(type) {
+  const dd = document.getElementById(type + '_dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+// ── عهدة العامل: إيه الأدوات اللي معاه دلوقتي ───
+function getWorkerOutstanding(workerName) {
+  const log = getLog();
+  const balances = {}; // toolId -> { toolName, qty }
+  log.forEach(l => {
+    if ((l.worker || '') !== workerName) return;
+    if (l.action !== 'إخراج' && l.action !== 'إرجاع') return;
+    if (!balances[l.toolId]) balances[l.toolId] = { toolName: l.toolName, qty: 0 };
+    balances[l.toolId].qty += (l.action === 'إخراج' ? l.qty : -l.qty);
+  });
+  return Object.entries(balances)
+    .map(([toolId, v]) => ({ toolId, toolName: v.toolName, qty: v.qty }))
+    .filter(x => x.qty > 0)
+    .sort((a,b) => b.qty - a.qty);
+}
+
+function showWorkerCustody() {
+  const name = document.getElementById('lookup_worker_id').value.trim();
+  const resultBox = document.getElementById('worker-custody-result');
+  if (!name) { alert('اختار أو اكتب اسم العامل'); return; }
+
+  const items = getWorkerOutstanding(name);
+  if (!items.length) {
+    resultBox.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>${name} مفيش معاه أي أدوات دلوقتي</p></div>`;
+    return;
+  }
+  resultBox.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:8px">🔧 عهدة ${name}:</div>` +
+    items.map(it => {
+      const tool = getTools().find(t => t.id === it.toolId);
+      const unit = tool ? (tool.unit || '') : '';
+      return `<div class="custody-item"><span>${it.toolName}</span><span class="custody-qty">${it.qty} ${unit}</span></div>`;
+    }).join('');
+}
 
 function lendTool() {
   const docId = document.getElementById('lend_tool_id').value;
-  const worker = document.getElementById('lend_worker').value.trim();
+  const worker = document.getElementById('lend_worker_id').value.trim();
   const qty    = parseInt(document.getElementById('lend_qty').value) || 0;
   const reason = document.getElementById('lend_reason').value.trim();
 
   if (!docId) return alert('اختار الصنف');
-  if (!worker) return alert('اكتب اسم العامل');
+  if (!worker) return alert('اكتب أو اختار اسم العامل');
   if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
 
   const t = localToolsArray.find(x => x.docId === docId);
@@ -1129,7 +1332,10 @@ function lendTool() {
     });
   }
 
-  document.getElementById('lend_worker').value = '';
+  ensureWorkerExists(worker);
+
+  document.getElementById('lend_worker_search').value = '';
+  document.getElementById('lend_worker_id').value = '';
   document.getElementById('lend_reason').value = '';
   document.getElementById('lend_qty').value = '1';
   document.getElementById('lend_tool_search').value = '';
@@ -1140,12 +1346,12 @@ function lendTool() {
 
 function returnTool() {
   const docId = document.getElementById('return_tool_id').value;
-  const worker = document.getElementById('return_worker').value.trim();
+  const worker = document.getElementById('return_worker_id').value.trim();
   const qty    = parseInt(document.getElementById('return_qty').value) || 0;
   const condEl = document.querySelector('[name=return_cond]:checked');
 
   if (!docId)  return alert('اختار الأداة');
-  if (!worker)  return alert('اكتب اسم العامل');
+  if (!worker)  return alert('اكتب أو اختار اسم العامل');
   if (qty <= 0) return alert('الكمية لازم تكون أكبر من صفر');
   if (!condEl)  return alert('اختار حالة الأداة');
 
@@ -1166,7 +1372,10 @@ function returnTool() {
     showToast(msg);
   });
 
-  document.getElementById('return_worker').value = '';
+  ensureWorkerExists(worker);
+
+  document.getElementById('return_worker_search').value = '';
+  document.getElementById('return_worker_id').value = '';
   document.getElementById('return_qty').value = '1';
   document.getElementById('return_tool_search').value = '';
   document.getElementById('return_tool_id').value = '';
